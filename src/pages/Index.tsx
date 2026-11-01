@@ -130,14 +130,37 @@ const Index = () => {
   const [selected, setSelected] = useState<[string, string] | null>(null);
   const [aiOpen, setAiOpen] = useState(false);
   const [input, setInput] = useState("");
-  const [msgs, setMsgs] = useState<Msg[]>([
-    { from: "ai", text: "Hi, I am Gabriel. Ask me about prices, a Bible verse, contact details or hours." },
-  ]);
+  const [msgs, setMsgs] = useState<Msg[]>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("gabriel_chat_log") || "null");
+      if (Array.isArray(saved) && saved.length) return saved;
+    } catch {}
+    return [{ from: "ai", text: "Hi, I am Gabriel. Ask me about prices, a Bible verse, contact details or hours." }];
+  });
 
   useEffect(() => {
     const t = setTimeout(() => setLoaded(true), 2500);
     return () => clearTimeout(t);
   }, []);
+
+  useEffect(() => {
+    try { localStorage.setItem("gabriel_chat_log", JSON.stringify(msgs)); } catch {}
+  }, [msgs]);
+
+  const downloadChat = () => {
+    const stamp = new Date().toLocaleString("en-ZA");
+    const text = [`Gabriel AI chat recording - ${stamp}`, "", ...msgs.map((m) => `[${m.from === "user" ? "You" : "Gabriel"}] ${m.text}`)].join("\n");
+    const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `gabriel-chat-${Date.now()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const clearChat = () => {
+    setMsgs([{ from: "ai", text: "Chat cleared. Ask me about prices, a Bible verse, contact details or hours." }]);
+  };
 
   const send = () => {
     const q = input.trim();
@@ -298,7 +321,11 @@ const Index = () => {
           <div onClick={(e) => e.stopPropagation()} style={{ ...card, width: "100%", maxWidth: 480, borderRadius: "20px 20px 0 0", height: "70vh", display: "flex", flexDirection: "column", padding: 14 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
               <span style={{ ...glow, fontWeight: 800 }}>Gabriel AI</span>
-              <button onClick={() => setAiOpen(false)} style={{ background: "none", border: "none", color: "#D4AF37", fontSize: 14, cursor: "pointer" }}>Close</button>
+              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                <button onClick={downloadChat} style={{ background: "none", border: "none", color: "#FFD700", fontSize: 13, cursor: "pointer" }}>Save</button>
+                <button onClick={clearChat} style={{ background: "none", border: "none", color: "#D4AF37", fontSize: 13, cursor: "pointer" }}>Clear</button>
+                <button onClick={() => setAiOpen(false)} style={{ background: "none", border: "none", color: "#D4AF37", fontSize: 14, cursor: "pointer" }}>Close</button>
+              </div>
             </div>
             <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
               {msgs.map((m, i) => (
